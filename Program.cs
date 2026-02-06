@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SkipHire.Api.Controllers;
 using SkipHire.Api.Data;
 using SkipHire.Api.Services;
@@ -43,6 +43,9 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseHttpsRedirection();
+
+app.MapGet("/", () => Results.Ok("NTG Backend is running ✅"));
+app.MapGet("/health", () => Results.Ok("OK"));
 
 app.UseCors("AngularDev");
 app.UseAuthorization();

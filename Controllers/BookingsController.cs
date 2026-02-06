@@ -178,12 +178,14 @@ public class BookingsController : ControllerBase
         <p><b>Email:</b> {req.Email}</p>
         <p><b>Mobile:</b> {req.Mobile}</p>
         <p><b>Address:</b> {req.Address}</p>
-        <p><b>Skip Size:</b> {req.SkipSize}</p>
-        <p><b>Material Type:</b> {req.MaterialType}</p>
         <p><b>Preferred Date:</b> {dateOnly:dddd, dd MMM yyyy}</p>
         <p><b>Preferred Time:</b> {req.TimeSlot}</p>
         <p><b>Additional Info:</b> {System.Net.WebUtility.HtmlEncode(req.Notes ?? "")}</p>
     ";
+        /*
+         *         <p><b>Skip Size:</b> {req.SkipSize}</p>
+                    <p><b>Material Type:</b> {req.MaterialType}</p>
+        */
 
         var clientSubject = "Your Skip Booking Request - NTG Excavations";
         var clientHtml = $@"
