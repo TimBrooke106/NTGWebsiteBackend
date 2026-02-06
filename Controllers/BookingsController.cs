@@ -82,18 +82,31 @@ public class BookingsController : ControllerBase
     }
 
     [HttpGet("slots")]
-    public async Task<ActionResult<List<string>>> GetBookedSlots([FromQuery] string date)
+    public async Task<IActionResult> GetBookedSlots([FromQuery] string date)
     {
-        if (!DateOnly.TryParse(date, out var d))
-            return BadRequest("Invalid date format. Use YYYY-MM-DD.");
+        // Validate incoming date strictly
+        if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", out var d))
+            return BadRequest(new { message = "Invalid date format. Use YYYY-MM-DD." });
 
-        var booked = await _db.Bookings
-            .Where(b => b.PreferredDate == d)
-            .Select(b => b.TimeSlot)
-            .ToListAsync();
+        var dateKey = d.ToString("yyyy-MM-dd");
 
-        return Ok(booked);
+        try
+        {
+            var booked = await _db.Bookings
+                // Convert PreferredDate to string in query (safe for SQLite)
+                .Where(b => b.PreferredDate.ToString("yyyy-MM-dd") == dateKey)
+                .Select(b => b.TimeSlot)
+                .ToListAsync();
+
+            return Ok(booked);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            return StatusCode(500, new { message = "Server error while fetching booked slots." });
+        }
     }
+
 
     [HttpPut("admin/{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(
