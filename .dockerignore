@@ -4,3 +4,4 @@ obj/
 skiphire.db
 *.db
 *.sqlite
+COPY . .

@@ -41,9 +41,20 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();   // applies migrations and creates tables
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+        Console.WriteLine("✅ DB migrated / ensured created");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("❌ DB migration failed");
+        Console.WriteLine(ex);
+        throw;
+    }
 }
+
 
 
 // Configure the HTTP request pipeline.
