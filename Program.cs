@@ -15,13 +15,17 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AngularDev", policy =>
+    options.AddPolicy("AllowedOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "https://ntgexcavations.netlify.app"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
+
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
@@ -47,7 +51,7 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => Results.Ok("NTG Backend is running ✅"));
 app.MapGet("/health", () => Results.Ok("OK"));
 
-app.UseCors("AngularDev");
+app.UseCors("AllowedOrigins");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
