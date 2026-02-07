@@ -24,9 +24,9 @@ builder.Services.AddCors(options =>
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 
-// whichever you’re using now (Resend recommended):
-// builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
+
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
