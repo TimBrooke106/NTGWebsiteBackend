@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:4200",
-                "http://ntgexcavations.com"
+                "https://ntgexcavations.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
