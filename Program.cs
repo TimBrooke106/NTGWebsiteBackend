@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:4200",
-                "https://ntgexcavations.netlify.app"
+                "http://ntgexcavations.com"
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
