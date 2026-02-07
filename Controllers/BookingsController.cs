@@ -62,22 +62,20 @@ public class BookingsController : ControllerBase
         }
     }
 
-    // POST api/bookings
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] BookingRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.FirstName) ||
-            string.IsNullOrWhiteSpace(req.Email))
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.FirstName))
             return BadRequest(new { message = "Missing required fields." });
 
-        if (!DateOnly.TryParseExact(req.PreferredDate, "yyyy-MM-dd", out var dateOnly))
+        if (!DateOnly.TryParse(req.PreferredDate, out var dateOnly))
             return BadRequest(new { message = "PreferredDate must be YYYY-MM-DD." });
 
         var allowedSlots = new[] { "08:00", "09:00", "10:00", "11:00", "12:00" };
         if (!allowedSlots.Contains(req.TimeSlot))
             return BadRequest(new { message = "Invalid time slot." });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(DateTime.Now);
 
         if (dateOnly < today)
             return BadRequest(new { message = "PreferredDate cannot be in the past." });
@@ -85,21 +83,21 @@ public class BookingsController : ControllerBase
         if (dateOnly.DayOfWeek == DayOfWeek.Sunday)
             return BadRequest(new { message = "Bookings are not available on Sundays." });
 
-        if (dateOnly == today && DateTime.UtcNow.TimeOfDay >= new TimeSpan(12, 0, 0))
-            return BadRequest(new { message = "Same-day bookings close at 12:00." });
+        if (dateOnly == today && DateTime.Now.TimeOfDay >= new TimeSpan(12, 0, 0))
+            return BadRequest(new { message = "Same-day bookings are not available after 12:00." });
 
         var booking = new Booking
         {
             FirstName = req.FirstName.Trim(),
-            LastName = req.LastName?.Trim(),
+            LastName = (req.LastName ?? "").Trim(),
             Email = req.Email.Trim(),
-            Mobile = req.Mobile?.Trim(),
-            Address = req.Address?.Trim(),
+            Mobile = (req.Mobile ?? "").Trim(),
+            Address = (req.Address ?? "").Trim(),
             PreferredDate = dateOnly,
             TimeSlot = req.TimeSlot,
             Notes = req.Notes,
-            CreatedUtc = DateTime.UtcNow,
-            Status = "Pending"
+            Status = "Pending",
+            CreatedUtc = DateTime.UtcNow
         };
 
         _db.Bookings.Add(booking);
@@ -110,48 +108,64 @@ public class BookingsController : ControllerBase
         }
         catch (DbUpdateException)
         {
-            return Conflict(new
-            {
-                message = "That time slot is already booked for this date."
-            });
+            return Conflict(new { message = "That time slot is already booked for this date." });
         }
 
-        // Emails must NEVER block a booking
+
+        // Build email HTML
+        var fullName = $"{booking.FirstName} {booking.LastName}".Trim();
+        var detailsHtml = $@"
+        <h2>Skip Booking Details</h2>
+        <p><b>Name:</b> {fullName}</p>
+        <p><b>Email:</b> {booking.Email}</p>
+        <p><b>Mobile:</b> {booking.Mobile}</p>
+        <p><b>Address:</b> {booking.Address}</p>
+        <p><b>Preferred Date:</b> {dateOnly:dddd, dd MMM yyyy}</p>
+        <p><b>Preferred Time:</b> {booking.TimeSlot}</p>
+        <p><b>Additional Info:</b> {System.Net.WebUtility.HtmlEncode(booking.Notes ?? "")}</p>
+    ";
+
+        var clientSubject = "Your Booking Request - NTG Excavations";
+        var clientHtml = $@"
+        <p>Hi {booking.FirstName},</p>
+        <p>Thanks for your booking request. Here are your details:</p>
+        {detailsHtml}
+        <p>We’ll contact you shortly to confirm availability.</p>
+        <p>— NTG Excavations</p>
+    ";
+
+        var adminSubject = $"NEW Booking - {fullName}";
+        var adminHtml = $@"<p><b>New booking received:</b></p>{detailsHtml}";
+        var emailFailed = false;
+
         try
         {
-            var fullName = $"{booking.FirstName} {booking.LastName}".Trim();
+            // Run email in background-ish with a hard timeout
+            var t1 = _emailSender.SendAsync(booking.Email, clientSubject, clientHtml);
+            var t2 = _emailSender.SendAsync(_emailSettings.AdminEmail, adminSubject, adminHtml);
 
-            var detailsHtml = $@"
-                <h2>Skip Booking Details</h2>
-                <p><b>Name:</b> {fullName}</p>
-                <p><b>Email:</b> {booking.Email}</p>
-                <p><b>Mobile:</b> {booking.Mobile}</p>
-                <p><b>Address:</b> {booking.Address}</p>
-                <p><b>Preferred Date:</b> {booking.PreferredDate:dddd, dd MMM yyyy}</p>
-                <p><b>Preferred Time:</b> {booking.TimeSlot}</p>
-                <p><b>Notes:</b> {System.Net.WebUtility.HtmlEncode(booking.Notes ?? "")}</p>
-            ";
+            var all = Task.WhenAll(t1, t2);
+            var finished = await Task.WhenAny(all, Task.Delay(8000));
 
-            await _emailSender.SendAsync(
-                booking.Email,
-                "Your Skip Booking Request - NTG Excavations",
-                $"<p>Thanks for your booking request.</p>{detailsHtml}"
-            );
-
-            await _emailSender.SendAsync(
-                _emailSettings.AdminEmail,
-                $"NEW Booking - {fullName}",
-                detailsHtml
-            );
+            if (finished != all)
+                emailFailed = true;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine("Email failed:");
-            Console.WriteLine(ex);
+            emailFailed = true;
         }
 
-        return Ok(new { message = "Booking submitted successfully." });
+        // ALWAYS OK if booking saved
+        return Ok(new
+        {
+            message = emailFailed
+                ? "Booking saved, but email delivery is temporarily unavailable."
+                : "Booking submitted. Emails sent.",
+            bookingId = booking.Id
+        });
+
     }
+
 
     /* ============================
        Admin endpoints
