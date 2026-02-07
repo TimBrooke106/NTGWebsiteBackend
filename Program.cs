@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Resend;
 using SkipHire.Api.Controllers;
 using SkipHire.Api.Data;
 using SkipHire.Api.Services;
@@ -26,16 +27,11 @@ builder.Services.AddCors(options =>
 });
 
 // Email + DB + Auth settings
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.Configure<AdminAuthSettings>(
-    builder.Configuration.GetSection("AdminAuth"));
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
 
 var app = builder.Build();
+
 
 // Apply EF migrations on startup (creates tables like Bookings)
 using (var scope = app.Services.CreateScope())
