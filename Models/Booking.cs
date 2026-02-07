@@ -10,9 +10,6 @@ public class Booking
     public string Mobile { get; set; } = "";
     public string Address { get; set; } = "";
 
-    public string SkipSize { get; set; } = "";
-    public string MaterialType { get; set; } = "";
-
     // Store date-only (best for "per day")
     public DateOnly PreferredDate { get; set; }
 

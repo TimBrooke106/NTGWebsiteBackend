@@ -7,8 +7,6 @@ public class BookingRequest
     public string Email { get; set; } = "";
     public string Mobile { get; set; } = "";
     public string Address { get; set; } = "";
-    public string SkipSize { get; set; } = "";
-    public string MaterialType { get; set; } = "";
 
     // Expect: "YYYY-MM-DD"
     public string PreferredDate { get; set; } = "";
