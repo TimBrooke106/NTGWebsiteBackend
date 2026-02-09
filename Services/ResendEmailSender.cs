@@ -26,7 +26,7 @@ public class ResendEmailSender : IEmailSender
             return;
         }
 
-        var from = "NTG Excavations <brooketimothy494@gmail.com>";
+        var from = "NTG Excavations <no-reply@ntgexcavations.com>";
 
         var payload = new
         {
