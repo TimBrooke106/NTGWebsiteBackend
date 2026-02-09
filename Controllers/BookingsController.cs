@@ -291,4 +291,23 @@ public class BookingsController : ControllerBase
         return Ok(new { message = "Booking deleted." });
     }
 
+    // GET api/bookings/admin/stats
+    [HttpGet("admin/stats")]
+    public async Task<IActionResult> GetAdminStats()
+    {
+        if (!IsAdmin()) return Unauthorized();
+
+        var total = await _db.Bookings.CountAsync();
+        var pending = await _db.Bookings.CountAsync(b => b.Status == "Pending");
+        var confirmed = await _db.Bookings.CountAsync(b => b.Status == "Confirmed");
+
+        return Ok(new
+        {
+            totalBookings = total,
+            pending,
+            confirmed
+        });
+    }
+
+
 }
