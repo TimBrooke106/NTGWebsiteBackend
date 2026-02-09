@@ -71,7 +71,7 @@ public class BookingsController : ControllerBase
         if (!DateOnly.TryParse(req.PreferredDate, out var dateOnly))
             return BadRequest(new { message = "PreferredDate must be YYYY-MM-DD." });
 
-        var allowedSlots = new[] { "08:00", "09:00", "10:00", "11:00", "12:00" };
+        var allowedSlots = new[] { "07:00","07:30","08:00","08:30","09:00","09:30", "10:00","10:30", "11:00","11:30", "12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00"};
         if (!allowedSlots.Contains(req.TimeSlot))
             return BadRequest(new { message = "Invalid time slot." });
 
