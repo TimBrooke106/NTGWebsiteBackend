@@ -199,9 +199,7 @@ public class BookingsController : ControllerBase
     }
 
     [HttpPut("admin/{id:int}/status")]
-    public async Task<IActionResult> UpdateStatus(
-        int id,
-        [FromBody] UpdateBookingStatusRequest req)
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateBookingStatusRequest req)
     {
         if (!IsAdmin()) return Unauthorized();
 
@@ -218,51 +216,60 @@ public class BookingsController : ControllerBase
             _db.Bookings.Remove(booking);
             await _db.SaveChangesAsync();
 
-            return Ok(new
-            {
-                deleted = true,
-                bookingId = id
-            });
+            return Ok(new { deleted = true, bookingId = id });
         }
 
-        // ✅ CONFIRM
+        // ✅ CONFIRM (send email only if changing to confirmed)
+        var wasConfirmed = booking.Status == "Confirmed";
         booking.Status = "Confirmed";
         await _db.SaveChangesAsync();
 
-        // 📧 Send confirmation email (non-blocking)
-        try
+        var emailSent = false;
+        string? emailError = null;
+
+        if (!wasConfirmed)
         {
-            var fullName = $"{booking.FirstName} {booking.LastName}".Trim();
+            try
+            {
+                var fullName = $"{booking.FirstName} {booking.LastName}".Trim();
+                var subject = "Booking Confirmed - NTG Excavations";
 
-            var subject = "Booking Confirmed - NTG Excavations";
-            var html = $@"
-            <p>Hi {booking.FirstName},</p>
-            <p><b>Your booking has been confirmed ✅</b></p>
+                var html = $@"
+                <p>Hi {booking.FirstName},</p>
+                <p><b>Your booking has been confirmed ✅</b></p>
 
-            <h3>Booking Details</h3>
-            <p><b>Name:</b> {fullName}</p>
-            <p><b>Date:</b> {booking.PreferredDate:dddd, dd MMM yyyy}</p>
-            <p><b>Time:</b> {booking.TimeSlot}</p>
-            <p><b>Address:</b> {System.Net.WebUtility.HtmlEncode(booking.Address)}</p>
+                <h3>Booking Details</h3>
+                <p><b>Name:</b> {fullName}</p>
+                <p><b>Date:</b> {booking.PreferredDate:dddd, dd MMM yyyy}</p>
+                <p><b>Time:</b> {booking.TimeSlot}</p>
+                <p><b>Address:</b> {System.Net.WebUtility.HtmlEncode(booking.Address)}</p>
 
-            <p>— NTG Excavations</p>
-        ";
+                <p>— NTG Excavations</p>
+            ";
 
-            await _emailSender.SendAsync(booking.Email, subject, html);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Confirmation email failed:");
-            Console.WriteLine(ex);
-            // IMPORTANT: do NOT fail the request
+                // add a timeout so your API doesn't hang if email provider is slow
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await _emailSender.SendAsync(booking.Email, subject, html, cts.Token);
+
+                emailSent = true;
+            }
+            catch (Exception ex)
+            {
+                emailError = ex.Message;
+                Console.WriteLine("Confirmation email failed:");
+                Console.WriteLine(ex);
+            }
         }
 
         return Ok(new
         {
             booking.Id,
-            booking.Status
+            booking.Status,
+            emailSent,
+            emailError
         });
     }
+
 
 
 
