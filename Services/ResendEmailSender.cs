@@ -17,7 +17,7 @@ public class ResendEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task SendAsync(string toEmail, string subject, string htmlBody)
+    public async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
     {
         var apiKey = _config["RESEND_API_KEY"];
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -26,8 +26,6 @@ public class ResendEmailSender : IEmailSender
             return;
         }
 
-        // Start with Resend's shared onboarding sender.
-        // Later, when you verify a domain, change this to: "NTG Excavations <you@yourdomain.com>"
         var from = "NTG Excavations <onboarding@resend.dev>";
 
         var payload = new
@@ -44,17 +42,26 @@ public class ResendEmailSender : IEmailSender
 
         try
         {
-            var res = await _http.SendAsync(req);
-            var body = await res.Content.ReadAsStringAsync();
+            var res = await _http.SendAsync(req, ct);
+            var body = await res.Content.ReadAsStringAsync(ct);
 
             if (!res.IsSuccessStatusCode)
             {
                 _logger.LogError("Resend failed: {Status} {Body}", (int)res.StatusCode, body);
             }
+            else
+            {
+                _logger.LogInformation("Resend sent OK to {ToEmail}", toEmail);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Resend request cancelled");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Resend HTTP exception");
         }
     }
+
 }
