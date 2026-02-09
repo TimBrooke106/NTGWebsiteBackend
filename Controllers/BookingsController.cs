@@ -198,11 +198,11 @@ public class BookingsController : ControllerBase
         return Ok(items);
     }
 
-    // PUT api/bookings/admin/{id}/status
     [HttpPut("admin/{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(
         int id,
-        [FromBody] UpdateBookingStatusRequest req)
+        [FromBody] UpdateBookingStatusRequest req,
+        [FromServices] AppDbContext db)
     {
         if (!IsAdmin()) return Unauthorized();
 
@@ -210,14 +210,57 @@ public class BookingsController : ControllerBase
         if (!allowed.Contains(req.Status))
             return BadRequest(new { message = "Invalid status." });
 
-        var booking = await _db.Bookings.FindAsync(id);
+        var booking = await db.Bookings.FindAsync(id);
         if (booking == null) return NotFound();
 
+        var wasConfirmed = booking.Status == "Confirmed";
         booking.Status = req.Status;
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
-        return Ok(new { booking.Id, booking.Status });
+        // ✅ Send confirmation email only when transitioning to Confirmed
+        var emailSent = false;
+
+        if (req.Status == "Confirmed" && !wasConfirmed)
+        {
+            try
+            {
+                var fullName = $"{booking.FirstName} {booking.LastName}".Trim();
+
+                var subject = "Booking Confirmed - NTG Excavations";
+
+                var html = $@"
+                <p>Hi {booking.FirstName},</p>
+                <p><b>Your booking has been confirmed ✅</b></p>
+
+                <h3>Booking Details</h3>
+                <p><b>Name:</b> {fullName}</p>
+                <p><b>Date:</b> {booking.PreferredDate:dddd, dd MMM yyyy}</p>
+                <p><b>Time:</b> {booking.TimeSlot}</p>
+                <p><b>Address:</b> {System.Net.WebUtility.HtmlEncode(booking.Address)}</p>
+
+                <p>If you need to make changes, please reply to this email or contact us.</p>
+                <p>— NTG Excavations</p>
+            ";
+
+                await _emailSender.SendAsync(booking.Email, subject, html);
+                emailSent = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Confirm email failed:");
+                Console.WriteLine(ex);
+                // IMPORTANT: don't fail the status update if email fails
+            }
+        }
+
+        return Ok(new
+        {
+            booking.Id,
+            booking.Status,
+            emailSent
+        });
     }
+
 
     /* ============================
        Debug (temporary)
