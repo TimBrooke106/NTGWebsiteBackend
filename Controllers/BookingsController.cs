@@ -229,4 +229,19 @@ public class BookingsController : ControllerBase
         var count = await _db.Bookings.CountAsync();
         return Ok(new { count });
     }
+
+    [HttpDelete("admin/{id:int}")]
+    public async Task<IActionResult> DeleteBooking(int id, [FromServices] AppDbContext db)
+    {
+        if (!IsAdmin()) return Unauthorized();
+
+        var booking = await db.Bookings.FindAsync(id);
+        if (booking == null) return NotFound();
+
+        db.Bookings.Remove(booking);
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Booking deleted." });
+    }
+
 }
