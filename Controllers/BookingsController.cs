@@ -62,6 +62,29 @@ public class BookingsController : ControllerBase
         }
     }
 
+    private static List<string> BuildSlots(TimeSpan start, TimeSpan end, int stepMinutes)
+    {
+        var slots = new List<string>();
+        for (var t = start; t <= end; t = t.Add(TimeSpan.FromMinutes(stepMinutes)))
+            slots.Add($"{t.Hours:D2}:{t.Minutes:D2}");
+        return slots;
+    }
+
+    private static IReadOnlyList<string> AllowedSlotsFor(DateOnly date)
+    {
+        // Mon-Fri: 07:00 - 16:00 (every 30 mins)
+        if (date.DayOfWeek is >= DayOfWeek.Monday and <= DayOfWeek.Friday)
+            return BuildSlots(new TimeSpan(7, 0, 0), new TimeSpan(16, 0, 0), 30);
+
+        // Saturday: 08:00 - 12:00 (every 30 mins)
+        if (date.DayOfWeek == DayOfWeek.Saturday)
+            return BuildSlots(new TimeSpan(8, 0, 0), new TimeSpan(12, 0, 0), 30);
+
+        // Sunday: none
+        return Array.Empty<string>();
+    }
+
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] BookingRequest req)
     {
@@ -71,9 +94,13 @@ public class BookingsController : ControllerBase
         if (!DateOnly.TryParse(req.PreferredDate, out var dateOnly))
             return BadRequest(new { message = "PreferredDate must be YYYY-MM-DD." });
 
-        var allowedSlots = new[] { "07:00","07:30","08:00","08:30","09:00","09:30", "10:00","10:30", "11:00","11:30", "12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00"};
+        var allowedSlots = AllowedSlotsFor(dateOnly);
+        if (allowedSlots.Count == 0)
+            return BadRequest(new { message = "Bookings are not available on Sundays." });
+
         if (!allowedSlots.Contains(req.TimeSlot))
-            return BadRequest(new { message = "Invalid time slot." });
+            return BadRequest(new { message = "Invalid time slot for the selected date." });
+
 
         var today = DateOnly.FromDateTime(DateTime.Now);
 
