@@ -28,8 +28,12 @@ builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
 builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
 
 
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("postgresql://ntgdb_jc95_user:On0cN2gyYAiBBqox8xYXJmQlhC5K7RLj@dpg-d7cdpg28qa3s73abs420-a.frankfurt-postgres.render.com/ntgdb_jc95");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.Configure<AdminAuthSettings>(builder.Configuration.GetSection("AdminAuth"));
 

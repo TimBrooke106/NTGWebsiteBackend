@@ -12,7 +12,7 @@ using SkipHire.Api.Data;
 namespace SkipHire.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260209022846_InitialPostgres")]
+    [Migration("20260413073522_InitialPostgres")]
     partial class InitialPostgres
     {
         /// <inheritdoc />
